@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+	<h1 id="title" >{{title}}</h1>
+	<h1 id ="time"> 0:00</h1>
+<body>
+	<div class = "box">
+		<div id = "averages" class = "flex-container">
+			<div id="pedal" class="flex-item">
+				<div id = "pedal-percent" class="percent">
+					<!--to be replaced w/dynamic percentages-->%
+				</div>
+				pedal
+			</div>
+	  		<div id = "electric" class="flex-item">
+	  			<div id = "electric-percent" class="percent">
+					<!--to be replaced w/dynamic percentages-->%
+				</div>
+	  			electric
+	  		</div>
+		</div>
+
+		<div class = "flex-container">
+			<div id="color-pedal" class="flex-item">
+			</div>
+	  		<div id = "color-electric" class="flex-item">
+	  		</div>
+		</div>
+
+		<div id = "user-pedal">
+			<div id = "user-pedal-line">
+				<!--<hr noshade id = "user-pedal-line" width = "2" size=430>-->
+			</div>
+			<div id = "user-pedal-text">
+			</div>
+		</div>
+	</div>
+
+	<div class = buttons>
+		<p style="display:inline-block"> View riding averages for: </p>
+		<button id="display-all" style= "display:inline-block">All PEVs</button>
+		<button id="display-PEV" style= "display:inline-block">This PEV</button>
+		<button id="display-user" style= "display:inline-block">Your rides</button>
+		<form action="/" method="post" style= "display:inline-block; float:right">
+			<input type="submit" value="Generate New Ride" ></input>
+		</form>
+	</div>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+	<script>
+		var state = 0;
+		var states = ["All PEVs", " This PEV", "Your rides"];
+		var changeTime = setInterval(time, 1000); 
+		var changeDisplay = setInterval(display, 500); //power saving: store in array, then send every some time
+		//var changeState = setInterval(ride, 5000); 
+		var time = 0; //TODO: update mins and reset seconds so don't overflow
+		var b_all = document.getElementById('display-all'), b_PEV = document.getElementById('display-PEV'), b_user = document.getElementById('display-user');
+		b_all.onclick = function(){
+			state = 0; //show all PEVs
+			document.getElementById('title').innerHTML = states[state]
+		}
+		b_PEV.onclick = function(){
+			state = 1; //show this PEV
+			document.getElementById('title').innerHTML = states[state]
+		}
+		b_user.onclick = function(){
+			state = 2; //show your history
+			document.getElementById('title').innerHTML = states[state]
+		}
+		function time(){
+			var __MYAPP_CONFIG__ = {
+		    	url: "updateride?id=" + '{{id}}'
+		    };
+			var get = $.ajax({
+			 	url: __MYAPP_CONFIG__.url,
+			 	type: "GET",
+			 	async: false,
+			 	success: function(data){
+			 		my_ride = data;
+			 		time = my_ride.time;
+			 	}
+			 });
+			time = time + 1;
+			//console.log(time);
+			var min = Math.floor(time/60);
+			var sec = time%60;
+			if (sec<10){
+				document.getElementById('time').innerHTML = min+":0"+sec;
+			}
+			else{
+				document.getElementById('time').innerHTML = min+":"+sec;
+			}	
+		}
+		/*function ride() {
+			if (state == 0){
+				state = 1; //This PEV
+			}
+			else if (state == 1){
+				state = 2; 	//Your Average			
+			}
+			else if (state == 2){
+				state = 0; //All PEVs
+			}
+			document.getElementById('title').innerHTML = states[state];
+		}*/
+		function display() {
+			/*console.log({{global_avg}});
+			console.log({{veh_avg}});*/
+		    var __MYAPP_CONFIG__ = {
+		     	id: '{{id}}',
+		     	time : time,
+				pedal : {{pedal}},
+		   		global_avg: {{global_avg}},
+		    	veh_avg: {{veh_avg}},
+		    	user_avg: {{user_avg}},
+		    	url: "updateride?id=" + '{{id}}'
+		    };
+		    var post = $.ajax({
+		     	url: "/ride",
+		     	type: "POST",
+		     	data:  {id: __MYAPP_CONFIG__.id,
+		     			time: __MYAPP_CONFIG__.time,
+		     			pedal: __MYAPP_CONFIG__.pedal,
+		     			global_avg: __MYAPP_CONFIG__.global_avg,
+		     			veh_avg: __MYAPP_CONFIG__.veh_avg,
+		     			user_avg: __MYAPP_CONFIG__.user_avg}
+		     })
+			 var get = $.ajax({
+			 	url: __MYAPP_CONFIG__.url,
+			 	type: "GET",
+			 	async: false,
+			 	success: function(data){
+			 		my_ride = data;
+			 		var ped_per = 0;
+			 		//console.log(my_ride.global_avg);
+			 		if (state == 0){ //All PEVs
+						document.getElementById('pedal').style.width = my_ride.global_avg+"%";
+						ped_per = Math.round(my_ride.global_avg * 10) / 10;
+					}
+					else if (state == 1){ //This PEV		
+						document.getElementById('pedal').style.width = my_ride.veh_avg+"%";
+						ped_per = Math.round(my_ride.veh_avg * 10) / 10;
+					}
+					else if (state == 2){ //Your Average
+						document.getElementById('pedal').style.width = my_ride.user_avg+"%";
+						ped_per = Math.round(my_ride.user_avg * 10) / 10;
+					}
+					document.getElementById('pedal-percent').innerHTML = ped_per+"%";
+					document.getElementById('electric-percent').innerHTML = Math.round((100-ped_per)*10)/10+"%";
+
+					//document.getElementById('user-pedal-line').style.marginLeft = my_ride.pedal+"%";
+					document.getElementById('user-pedal-text').innerHTML = Math.round(my_ride.pedal)+"%: <p> your current pedaling </p>";
+					document.getElementById('user-pedal').style.marginLeft = my_ride.pedal-10+"%";
+					document.getElementById('color-pedal').style.width = my_ride.pedal+"%";
+			 	}
+			 });
+			 /*var get = $.ajax({
+			 	url: __MYAPP_CONFIG__.url,
+			 	type: "GET",
+			 });*/
+		};
+	</script>
+</body>
+
+<style>
+	*{font-family: 'Helvetica Neue';}
+	html,
+	body{
+		font-size: 30px;
+		font-weight: normal;
+		color: white;
+		height: 100%;
+		background-color: black;
+		overflow:hidden;
+	}
+	h1{
+		font-weight: 400;
+	}
+	p{
+		font-size: 17px;
+		margin-top: 0;
+		margin-bottom: 0;
+	}
+	button,
+	input{
+		cursor: pointer;
+		display: inline-block;
+		letter-spacing: 1px;
+		font-weight: 500;
+		outline: none;
+		position: relative;
+		-webkit-transition: all 0.3s;
+		-moz-transition: all 0.3s;
+		transition: all 0.3s;
+		color:white;
+		background:black;
+		border:white;
+		border-style:solid;
+	}
+	input:hover,
+	button:hover{
+		border: none;
+		color: black;
+		background: white;
+	}
+	.box{
+		height: 70%;
+		position: fixed;
+		width: calc(100% - 116px);
+		/*margin-right: 20%;*/
+		/*width: 100%;*/
+	}
+	.flex-container {
+	  height: 50%;
+	  width: inherit;
+	  display: inline-flex;
+	  flex-direction: row;
+	  flex: 1 1 auto;
+	  justify-content: center;
+	  align-content: center;
+	  align-items: center;
+	  position:fixed;
+	}
+	.flex-item{
+		display: flex;
+		flex-direction:column;
+		justify-content: center;
+		height:100%;
+		text-align: center;
+		color: white;
+		font-size: 25px;
+		transition-property: width;
+    	transition-duration: .5s;
+	}
+	.percent{
+		justify-content: center;
+		font-size: 40px;
+	}
+	.buttons{
+		position: absolute;
+		bottom: 5%;
+		width: 91%;
+	}
+	.hidden{
+		display: none;
+	}
+	#averages{
+		z-index:-1;
+	}
+	#pedal{
+		background-color: #00BE07;
+		border-bottom-left-radius: 50px;
+		border-top-left-radius: 50px;
+		margin: 0px;
+	}
+	#electric{
+		background-color: #EF4E4E;
+		border-bottom-right-radius: 50px;
+		border-top-right-radius: 50px;
+		flex-grow: 1;
+		flex-shrink: 1;
+		margin: 0px;
+	}
+	#title{
+		margin-top: 0px;
+		display:inline-block;
+		align-content: left;
+	}
+	#time{
+		margin-top: 0px;
+		display:inline-block;
+		position:absolute;
+		right:7%;
+	}
+	#user-pedal{
+		transition-property: margin;
+    	transition-duration: .5s;
+    	width: 20%;
+    	height: 95%;
+    	z-index: 99999;
+	}
+	#user-pedal-text{
+		font-size:40px;
+		text-align:center;
+		display: inline-block;
+		width: 100%;
+		/*position: relative;*/
+	}
+	#user-pedal-line{
+		width: 50%;
+		height: 400px;
+		border-right-style: solid;
+		border-right: thick single white;
+		z-index: 999999;
+	}
+	#color-pedal{
+		background-color: rgba(255,255,255, .4);
+		z-index: 1;
+		margin: 0px;
+		border-bottom-left-radius: 50px;
+		border-top-left-radius: 50px;
+	}
+	#color-electric{
+		/*background-color: rgba(239,78,78, .5);*/
+		z-index: 1;
+		outline: none;
+		border-bottom-right-radius: 50px;
+		border-top-right-radius: 50px;
+		border-left-style: solid;
+		border-left: thick single white;
+		flex-grow: 1;
+		flex-shrink: 1;
+		margin: 0px;
+	}
+
+</style>
+
